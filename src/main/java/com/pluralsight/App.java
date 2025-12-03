@@ -1,67 +1,64 @@
 package com.pluralsight;
 
+import com.pluralsight.models.Actor;
+import com.pluralsight.models.Film;
 import javax.sql.DataSource;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Scanner;
-import static com.pluralsight.DataManager.getDataSource;
 
 public class App {
     public static void main(String[] args) {
 
-        DataSource dataSource = getDataSource(args[0], args[1]);
+        DataSource dataSource = DataManager.getDataSource(args[0], args[1]);
 
-        try (Scanner scanner = new Scanner(System.in) ;
-             Connection connection = dataSource.getConnection()){
+        try (Scanner scanner = new Scanner(System.in);
+             Connection connection = dataSource.getConnection()) {
 
-            System.out.print("Enter a last name of an actor you like: ");
-            String lastName = scanner.nextLine().trim();
+            DataManager dataManager = new DataManager(connection);
 
-            listActorsByLastName(connection, lastName);
+            System.out.print("Search actor by name (first or last): ");
+            String nameSearch = scanner.nextLine().trim();
 
-            System.out.print("\nEnter FIRST name of the actor to see their movies: ");
-            String firstName = scanner.nextLine().trim();
+            List<Actor> actors = dataManager.findActorsByName(nameSearch);
 
-            System.out.print("Enter LAST name of the actor to see their movies: ");
-            String filmLastName = scanner.nextLine().trim();
-
-            listFilmsByActor(connection, firstName, filmLastName);
-        }
-             catch (SQLException e) {
-                e.printStackTrace();
+            if (actors.isEmpty()) {
+                System.out.println("No actors found for that search.");
+                return;
             }
 
+            System.out.println("\nActors found:\n");
+            for (Actor actor : actors) {
+                System.out.printf("ID: %-4d Name: %s %s%n",
+                        actor.getActorId(),
+                        actor.getFirstName(),
+                        actor.getLastName());
+            }
 
-    }
+            System.out.print("\nEnter an actor ID to see their films: ");
+            String idInput = scanner.nextLine().trim();
 
-    private static void listActorsByLastName(Connection connection, String lastName) {
+            int actorId;
+            try {
+                actorId = Integer.parseInt(idInput);
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid actor ID.");
+                return;
+            }
 
-        String query = "SELECT actor_id, first_name, last_name " +
-                "FROM actor " +
-                "WHERE last_name = ? " +
-                "ORDER BY first_name, last_name";
+            List<Film> films = dataManager.findFilmsByActorId(actorId);
 
-        try (PreparedStatement statement = connection.prepareStatement(query)) {
-
-            statement.setString(1, lastName);
-
-            try (ResultSet results = statement.executeQuery()) {
-
-                if (results.next()) {
-                    System.out.println("\nYour matches are:\n");
-
-                    do {
-                        int actorId = results.getInt("actor_id");
-                        String first = results.getString("first_name");
-                        String last = results.getString("last_name");
-
-                        System.out.printf("ID: %-4d  Name: %s %s%n", actorId, first, last);
-
-                    } while (results.next());
-                } else {
-                    System.out.println("\nNo matches!");
+            if (films.isEmpty()) {
+                System.out.println("No films found for that actor.");
+            } else {
+                System.out.println("\nFilms:\n");
+                for (Film film : films) {
+                    System.out.printf("ID: %-4d Title: %s (%d, %d min)%n",
+                            film.getFilmId(),
+                            film.getTitle(),
+                            film.getReleaseYear(),
+                            film.getLength());
                 }
             }
 
@@ -69,42 +66,4 @@ public class App {
             e.printStackTrace();
         }
     }
-    private static void listFilmsByActor(Connection connection, String firstName, String lastName) {
-
-        String query = "SELECT f.film_id, f.title " +
-                "FROM film f " +
-                "JOIN film_actor fa ON f.film_id = fa.film_id " +
-                "JOIN actor a ON a.actor_id = fa.actor_id " +
-                "WHERE a.first_name = ? AND a.last_name = ? " +
-                "ORDER BY f.title";
-
-        try (PreparedStatement statement = connection.prepareStatement(query)) {
-
-            statement.setString(1, firstName);
-            statement.setString(2, lastName);
-
-            try (ResultSet results = statement.executeQuery()) {
-
-                if (results.next()) {
-                    System.out.printf("%nFilms for actor %s %s:%n%n", firstName, lastName);
-
-                    do {
-                        int filmId = results.getInt("film_id");
-                        String title = results.getString("title");
-
-                        System.out.printf("ID: %-4d  Title: %s%n", filmId, title);
-
-                    } while (results.next());
-                } else {
-                    System.out.println("\nNo films found for that actor!");
-                }
-
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-
 }
