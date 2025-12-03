@@ -1,12 +1,12 @@
 package com.pluralsight;
 
-import org.apache.commons.dbcp2.BasicDataSource;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Scanner;
+import static com.pluralsight.DataManager.getDataSource;
 
 public class App {
     public static void main(String[] args) {
@@ -36,13 +36,6 @@ public class App {
 
     }
 
-    private static DataSource getDataSource(String user, String password) {
-        BasicDataSource dataSource = new BasicDataSource();
-        dataSource.setUrl("jdbc:mysql://localhost:3306/sakila");
-        dataSource.setUsername(user);
-        dataSource.setPassword(password);
-        return dataSource;
-    }
     private static void listActorsByLastName(Connection connection, String lastName) {
 
         String query = "SELECT actor_id, first_name, last_name " +
